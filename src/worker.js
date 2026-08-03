@@ -52,24 +52,45 @@ export default {
          const weatherRes = await fetch(weatherUrl);
          const weatherData = await weatherRes.json();
 
-         // --- STEP 3: Time Loop (12 PM to 4 PM IST) ---
+         // --- STEP 3: Setup 30-Minute Time Loop ---
          const results = [];
          const coordString = `${startLng},${startLat};${endLng},${endLat}`;
-         const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+         
+         // Extract user time inputs (e.g., "12:00", "16:00")
+         const startTimeStr = url.searchParams.get("start_time"); // format HH:MM
+         const endTimeStr = url.searchParams.get("end_time");     // format HH:MM
 
-         for (let hour = 12; hour <= 16; hour++) {
-             const hourString = hour.toString().padStart(2, '0');
-             const timeString = `${todayISO}T${hourString}:00:00+05:30`;
+         if (!startTimeStr || !endTimeStr) {
+             throw new Error("Missing start or end time parameters.");
+         }
+
+         // Calculate the target day (Tomorrow)
+         const now = new Date();
+         const istOffset = 5.5 * 60 * 60 * 1000;
+         let targetDay = new Date(now.getTime() + istOffset);
+         targetDay.setDate(targetDay.getDate() + 1); // Set to tomorrow to guarantee future predictions
+         const dateISO = targetDay.toISOString().split('T')[0];
+
+         // Parse start and end hours/minutes
+         let [startHr, startMin] = startTimeStr.split(':').map(Number);
+         const [endHr, endMin] = endTimeStr.split(':').map(Number);
+
+         // Loop in 30-minute increments
+         while (startHr < endHr || (startHr === endHr && startMin <= endMin)) {
+             
+             const hourStr = startHr.toString().padStart(2, '0');
+             const minStr = startMin.toString().padStart(2, '0');
+             
+             const timeString = `${dateISO}T${hourStr}:${minStr}:00+05:30`;
              const unixDepartureTime = Math.floor(new Date(timeString).getTime() / 1000);
 
-             // A. Call Mappls Routing API
+             // A. Call Mappls
              const mapplsRouteUrl = `https://apis.mappls.com/advancedmaps/v1/${mapplsAccessToken}/route_adv/driving/${coordString}?rtype=1&region=ind&departure_time=${unixDepartureTime}`;
              const mapplsRes = await fetch(mapplsRouteUrl);
              const mapplsData = await mapplsRes.json();
 
-             // B. Extract Weather matching this specific hour
-             // Open-Meteo returns time strings like "2026-08-03T12:00"
-             const targetWeatherTime = `${todayISO}T${hourString}:00`;
+             // B. Extract Weather (Weather API is hourly, so snap to nearest hour)
+             const targetWeatherTime = `${dateISO}T${hourStr}:00`;
              const weatherIndex = weatherData.hourly?.time?.indexOf(targetWeatherTime) ?? -1;
 
              let tempC = "N/A";
@@ -80,25 +101,32 @@ export default {
                rainChance = weatherData.hourly.precipitation_probability[weatherIndex];
              }
 
-             // C. Store Combined Commute + Weather Data
+             // Display Time Formatting
+             const ampm = startHr >= 12 ? 'PM' : 'AM';
+             const displayHour = startHr % 12 || 12;
+
+             // C. Store Data
              if (mapplsData.routes && mapplsData.routes.length > 0) {
                  const durationSeconds = mapplsData.routes[0].duration;
-                 const distanceMeters = mapplsData.routes[0].distance;
-
                  results.push({
-                     time: `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`,
+                     time: `${displayHour}:${minStr} ${ampm}`,
                      duration_minutes: Math.round(durationSeconds / 60),
-                     distance_km: (distanceMeters / 1000).toFixed(2),
+                     distance_km: (mapplsData.routes[0].distance / 1000).toFixed(2),
                      temp_celsius: tempC,
                      rain_probability: rainChance
                  });
              } else {
                  results.push({
-                     time: `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`,
-                     error: "No route available.",
-                     temp_celsius: tempC,
-                     rain_probability: rainChance
+                     time: `${displayHour}:${minStr} ${ampm}`,
+                     error: "Past time or invalid route."
                  });
+             }
+
+             // Increment by 30 minutes
+             startMin += 30;
+             if (startMin >= 60) {
+                 startMin = 0;
+                 startHr += 1;
              }
          }
 
