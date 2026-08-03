@@ -27,8 +27,11 @@ endAutocomplete.on('select', (location) => {
 });
 
 document.getElementById('calculate-btn').addEventListener('click', async () => {
-    if (!startCoords || !endCoords) {
-        alert("Please select both a valid start and end address from the dropdowns.");
+    const startTimeInput = document.getElementById('start-time').value; // e.g., "12:00"
+    const endTimeInput = document.getElementById('end-time').value;     // e.g., "16:00"
+
+    if (!startCoords || !endCoords || !startTimeInput || !endTimeInput) {
+        alert("Please select locations and specify a time window.");
         return;
     }
 
@@ -37,22 +40,22 @@ document.getElementById('calculate-btn').addEventListener('click', async () => {
     const timelineList = document.getElementById('timeline-list');
     
     btn.textContent = "Calculating...";
-    timelineList.innerHTML = ""; // Clear previous results
+    timelineList.innerHTML = "";
     resultsContainer.classList.add('hidden');
 
     try {
-        // Construct the URL with coordinates (Geoapify returns [longitude, latitude])
-        const queryUrl = `/api/calculate-commute?start_lat=${startCoords[1]}&start_lng=${startCoords[0]}&end_lat=${endCoords[1]}&end_lng=${endCoords[0]}`;
+        // Now sending coordinates AND time window to the backend
+        const queryUrl = `/api/calculate-commute?start_lat=${startCoords[1]}&start_lng=${startCoords[0]}&end_lat=${endCoords[1]}&end_lng=${endCoords[0]}&start_time=${startTimeInput}&end_time=${endTimeInput}`;
         
         const response = await fetch(queryUrl);
         const data = await response.json();
 
+        // ... (rest of the display logic remains the same)
         if (data.status === "Success" && data.route_data) {
             data.route_data.forEach(slot => {
                 const li = document.createElement('li');
-                
                 if (slot.error) {
-                    li.innerHTML = `<strong>${slot.time}</strong><span>No route available</span>`;
+                    li.innerHTML = `<strong>${slot.time}</strong><span style="color: #ff6b6b;">${slot.error}</span>`;
                 } else {
                     li.innerHTML = `
                         <strong>${slot.time}</strong> 
