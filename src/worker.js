@@ -10,22 +10,23 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/calculate-commute") {
-      // Expecting latitude and longitude passed directly from frontend autocomplete!
       const startLat = url.searchParams.get("start_lat");
       const startLng = url.searchParams.get("start_lng");
       const endLat = url.searchParams.get("end_lat");
       const endLng = url.searchParams.get("end_lng");
+      const startTimeStr = url.searchParams.get("start_time");
+      const endTimeStr = url.searchParams.get("end_time");
 
-      if (!startLat || !startLng || !endLat || !endLng) {
-         return new Response(JSON.stringify({ error: "Missing start or end coordinates." }), { 
-           status: 400, 
-           headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      if (!startLat || !startLng || !endLat || !endLng || !startTimeStr || !endTimeStr) {
+         return new Response(JSON.stringify({ error: "Missing required parameters." }), {
+           status: 400,
+           headers: { ...corsHeaders, "Content-Type": "application/json" }
          });
       }
 
       // === MAPPLS OAUTH CREDENTIALS ===
-      const mapplsClientId = "96dHZVzsAusy9WUZvw8DmOqLlfd2mazlVJeN_Xn7_DTompZaxCnM_W-qFtdzu-VeLLLTo-pcSJbF47wQCivhvA=="; 
-      const mapplsClientSecret = "lrFxI-iSEg-jDRqME4PigRY7X9N3n8VI4k1SDpfEw6wAxpFhOz28TAPNbKHKYQSFGiOHrZj1B-zNVsGMoLM9SC6M-uqrqvlK"; 
+      const mapplsClientId = "YOUR_CLIENT_ID"; 
+      const mapplsClientSecret = "YOUR_CLIENT_SECRET"; 
 
       try {
          // --- STEP 1: Fetch Mappls OAuth Token ---
@@ -47,45 +48,14 @@ export default {
          if (!mapplsAccessToken) throw new Error("Mappls authentication failed.");
 
          // --- STEP 2: Fetch Open-Meteo Weather Data ---
-         // Using Asia/Kolkata timezone to align hourly slots with IST
          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${startLat}&longitude=${startLng}&hourly=temperature_2m,precipitation_probability&timezone=Asia%2FKolkata`;
          const weatherRes = await fetch(weatherUrl);
          const weatherData = await weatherRes.json();
-
-         // --- STEP 3: Setup 30-Minute Time Loop ---
-         const results = [];
-         const coordString = `${startLng},${startLat};${endLng},${endLat}`;
-         
-         // Extract user time inputs (e.g., "12:00", "16:00")
-         const startTimeStr = url.searchParams.get("start_time"); // format HH:MM
-         const endTimeStr = url.searchParams.get("end_time");     // format HH:MM
-
-         if (!startTimeStr || !endTimeStr) {
-             throw new Error("Missing start or end time parameters.");
-         }
-
-         // Calculate the target day (Tomorrow)
-         const now = new Date();
-         const istOffset = 5.5 * 60 * 60 * 1000;
-         let targetDay = new Date(now.getTime() + istOffset);
-         targetDay.setDate(targetDay.getDate() + 1); // Set to tomorrow to guarantee future predictions
-         const dateISO = targetDay.toISOString().split('T')[0];
-
-         // Parse start and end hours/minutes
-         let [startHr, startMin] = startTimeStr.split(':').map(Number);
-         const [endHr, endMin] = endTimeStr.split(':').map(Number);
 
          // --- STEP 3: Setup 30-Minute Time Loop (Smart Date & Fallback) ---
          const results = [];
          const coordString = `${startLng},${startLat};${endLng},${endLat}`;
          
-         const startTimeStr = url.searchParams.get("start_time");
-         const endTimeStr = url.searchParams.get("end_time");
-
-         if (!startTimeStr || !endTimeStr) {
-             throw new Error("Missing start or end time parameters.");
-         }
-
          // Smart Date Calculation (Today vs Tomorrow)
          const now = new Date();
          const istOffset = 5.5 * 60 * 60 * 1000;
@@ -95,6 +65,7 @@ export default {
          const [endHr, endMin] = endTimeStr.split(':').map(Number);
 
          let targetDay = new Date(currentIst);
+         
          // If the requested time is earlier than the current time, they mean tomorrow
          if (startHr < currentIst.getUTCHours() || (startHr === currentIst.getUTCHours() && startMin < currentIst.getUTCMinutes())) {
              targetDay.setDate(targetDay.getDate() + 1); 
@@ -187,4 +158,3 @@ export default {
     return new Response("Clearway Backend is Live!", { headers: corsHeaders });
   },
 };
- 
