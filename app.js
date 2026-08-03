@@ -42,7 +42,7 @@ document.getElementById('calculate-btn').addEventListener('click', async () => {
 
     try {
         // Construct the URL with coordinates (Geoapify returns [longitude, latitude])
-        const queryUrl = `${backendUrl}?start_lat=${startCoords[1]}&start_lng=${startCoords[0]}&end_lat=${endCoords[1]}&end_lng=${endCoords[0]}`;
+        const queryUrl = `/api/calculate-commute?start_lat=${startCoords[1]}&start_lng=${startCoords[0]}&end_lat=${endCoords[1]}&end_lng=${endCoords[0]}`;
         
         const response = await fetch(queryUrl);
         const data = await response.json();
