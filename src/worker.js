@@ -75,21 +75,63 @@ export default {
          let [startHr, startMin] = startTimeStr.split(':').map(Number);
          const [endHr, endMin] = endTimeStr.split(':').map(Number);
 
+         // --- STEP 3: Setup 30-Minute Time Loop (Smart Date & Fallback) ---
+         const results = [];
+         const coordString = `${startLng},${startLat};${endLng},${endLat}`;
+         
+         const startTimeStr = url.searchParams.get("start_time");
+         const endTimeStr = url.searchParams.get("end_time");
+
+         if (!startTimeStr || !endTimeStr) {
+             throw new Error("Missing start or end time parameters.");
+         }
+
+         // Smart Date Calculation (Today vs Tomorrow)
+         const now = new Date();
+         const istOffset = 5.5 * 60 * 60 * 1000;
+         let currentIst = new Date(now.getTime() + istOffset);
+         
+         let [startHr, startMin] = startTimeStr.split(':').map(Number);
+         const [endHr, endMin] = endTimeStr.split(':').map(Number);
+
+         let targetDay = new Date(currentIst);
+         // If the requested time is earlier than the current time, they mean tomorrow
+         if (startHr < currentIst.getUTCHours() || (startHr === currentIst.getUTCHours() && startMin < currentIst.getUTCMinutes())) {
+             targetDay.setDate(targetDay.getDate() + 1); 
+         }
+         
          // Loop in 30-minute increments
          while (startHr < endHr || (startHr === endHr && startMin <= endMin)) {
              
+             // Handle midnight rollover inside the loop
+             if (startHr >= 24) {
+                 startHr = 0;
+                 targetDay.setDate(targetDay.getDate() + 1);
+             }
+
+             const dateISO = targetDay.toISOString().split('T')[0];
              const hourStr = startHr.toString().padStart(2, '0');
              const minStr = startMin.toString().padStart(2, '0');
              
              const timeString = `${dateISO}T${hourStr}:${minStr}:00+05:30`;
              const unixDepartureTime = Math.floor(new Date(timeString).getTime() / 1000);
 
-             // A. Call Mappls
-             const mapplsRouteUrl = `https://apis.mappls.com/advancedmaps/v1/${mapplsAccessToken}/route_adv/driving/${coordString}?rtype=1&region=ind&departure_time=${unixDepartureTime}`;
-             const mapplsRes = await fetch(mapplsRouteUrl);
-             const mapplsData = await mapplsRes.json();
+             // A. Call Mappls (Try with Predictive Traffic First)
+             let mapplsRouteUrl = `https://apis.mappls.com/advancedmaps/v1/${mapplsAccessToken}/route_adv/driving/${coordString}?rtype=1&region=ind&departure_time=${unixDepartureTime}`;
+             let mapplsRes = await fetch(mapplsRouteUrl);
+             let mapplsData = await mapplsRes.json();
 
-             // B. Extract Weather (Weather API is hourly, so snap to nearest hour)
+             // B. Fallback for Long Distance (Inter-city) Trips
+             let isFallback = false;
+             if (!mapplsData.routes || mapplsData.routes.length === 0) {
+                 // Try standard routing without predictive traffic
+                 mapplsRouteUrl = `https://apis.mappls.com/advancedmaps/v1/${mapplsAccessToken}/route_adv/driving/${coordString}?region=ind`;
+                 mapplsRes = await fetch(mapplsRouteUrl);
+                 mapplsData = await mapplsRes.json();
+                 isFallback = true;
+             }
+
+             // C. Extract Weather
              const targetWeatherTime = `${dateISO}T${hourStr}:00`;
              const weatherIndex = weatherData.hourly?.time?.indexOf(targetWeatherTime) ?? -1;
 
@@ -101,11 +143,10 @@ export default {
                rainChance = weatherData.hourly.precipitation_probability[weatherIndex];
              }
 
-             // Display Time Formatting
              const ampm = startHr >= 12 ? 'PM' : 'AM';
              const displayHour = startHr % 12 || 12;
 
-             // C. Store Data
+             // D. Store Combined Data
              if (mapplsData.routes && mapplsData.routes.length > 0) {
                  const durationSeconds = mapplsData.routes[0].duration;
                  results.push({
@@ -113,12 +154,13 @@ export default {
                      duration_minutes: Math.round(durationSeconds / 60),
                      distance_km: (mapplsData.routes[0].distance / 1000).toFixed(2),
                      temp_celsius: tempC,
-                     rain_probability: rainChance
+                     rain_probability: rainChance,
+                     note: isFallback ? " (No live traffic data)" : "" // Flag long-distance fallback
                  });
              } else {
                  results.push({
                      time: `${displayHour}:${minStr} ${ampm}`,
-                     error: "Past time or invalid route."
+                     error: mapplsData.error || "Invalid route."
                  });
              }
 
@@ -145,3 +187,4 @@ export default {
     return new Response("Clearway Backend is Live!", { headers: corsHeaders });
   },
 };
+ 
