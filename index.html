@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clearway | Commute Optimizer</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Geoapify Autocomplete CSS (Minimal Dark Theme to match your aesthetic) -->
+    <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@1.4.0/styles/minimal-dark.css">
+</head>
+<body>
+    <div class="app-container">
+        <h1>Clearway</h1>
+        <p class="subtitle">Find your perfect commute window.</p>
+
+        <div class="input-group">
+            <label>Starting Point</label>
+            <!-- The Geoapify library needs a container with position: relative -->
+            <div id="start-autocomplete" class="autocomplete-container"></div>
+        </div>
+
+        <div class="input-group">
+            <label>Destination</label>
+            <div id="end-autocomplete" class="autocomplete-container"></div>
+        </div>
+
+        <button id="calculate-btn">Calculate Commute</button>
+
+        <div id="results-container" class="hidden">
+            <h2>Commute Forecast</h2>
+            <ul id="timeline-list"></ul>
+        </div>
+    </div>
+
+    <!-- Geoapify Autocomplete Script (CDN) -->
+    <script src="https://unpkg.com/@geoapify/geocoder-autocomplete@1.4.0/dist/index.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
