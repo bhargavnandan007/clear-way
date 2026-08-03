@@ -16,8 +16,24 @@
 
         <div class="input-group">
             <label>Starting Point</label>
-            <!-- The Geoapify library needs a container with position: relative -->
             <div id="start-autocomplete" class="autocomplete-container"></div>
+        </div>
+
+        <div class="input-group">
+            <label>Destination</label>
+            <div id="end-autocomplete" class="autocomplete-container"></div>
+        </div>
+
+        <!-- NEW: Time Window Inputs -->
+        <div class="time-inputs" style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-size: 0.9em; color: var(--text-muted);">Earliest Start</label>
+                <input type="time" id="start-time" value="12:00" style="width: 100%; padding: 10px; background: #222; border: 1px solid #333; color: white; border-radius: 4px;">
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-size: 0.9em; color: var(--text-muted);">Latest Start</label>
+                <input type="time" id="end-time" value="16:00" style="width: 100%; padding: 10px; background: #222; border: 1px solid #333; color: white; border-radius: 4px;">
+            </div>
         </div>
 
         <div class="input-group">
