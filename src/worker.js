@@ -52,11 +52,10 @@ export default {
          const weatherRes = await fetch(weatherUrl);
          const weatherData = await weatherRes.json();
 
-         // --- STEP 3: Setup 30-Minute Time Loop (Smart Date & Fallback) ---
+         // --- STEP 3: Setup 30-Minute Time Loop ---
          const results = [];
          const coordString = `${startLng},${startLat};${endLng},${endLat}`;
          
-         // Smart Date Calculation (Today vs Tomorrow)
          const now = new Date();
          const istOffset = 5.5 * 60 * 60 * 1000;
          let currentIst = new Date(now.getTime() + istOffset);
@@ -66,15 +65,13 @@ export default {
 
          let targetDay = new Date(currentIst);
          
-         // If the requested time is earlier than the current time, they mean tomorrow
+         // If requested time is earlier than current IST time, treat it as tomorrow
          if (startHr < currentIst.getUTCHours() || (startHr === currentIst.getUTCHours() && startMin < currentIst.getUTCMinutes())) {
              targetDay.setDate(targetDay.getDate() + 1); 
          }
          
-         // Loop in 30-minute increments
          while (startHr < endHr || (startHr === endHr && startMin <= endMin)) {
              
-             // Handle midnight rollover inside the loop
              if (startHr >= 24) {
                  startHr = 0;
                  targetDay.setDate(targetDay.getDate() + 1);
@@ -87,22 +84,21 @@ export default {
              const timeString = `${dateISO}T${hourStr}:${minStr}:00+05:30`;
              const unixDepartureTime = Math.floor(new Date(timeString).getTime() / 1000);
 
-             // A. Call Mappls (Try with Predictive Traffic First)
+             // A. Predictive Traffic Routing
              let mapplsRouteUrl = `https://apis.mappls.com/advancedmaps/v1/${mapplsAccessToken}/route_adv/driving/${coordString}?rtype=1&region=ind&departure_time=${unixDepartureTime}`;
              let mapplsRes = await fetch(mapplsRouteUrl);
              let mapplsData = await mapplsRes.json();
 
-             // B. Fallback for Long Distance (Inter-city) Trips
+             // B. Fallback for Long Distance Trips
              let isFallback = false;
              if (!mapplsData.routes || mapplsData.routes.length === 0) {
-                 // Try standard routing without predictive traffic
                  mapplsRouteUrl = `https://apis.mappls.com/advancedmaps/v1/${mapplsAccessToken}/route_adv/driving/${coordString}?region=ind`;
                  mapplsRes = await fetch(mapplsRouteUrl);
                  mapplsData = await mapplsRes.json();
                  isFallback = true;
              }
 
-             // C. Extract Weather
+             // C. Weather Calculation
              const targetWeatherTime = `${dateISO}T${hourStr}:00`;
              const weatherIndex = weatherData.hourly?.time?.indexOf(targetWeatherTime) ?? -1;
 
@@ -117,7 +113,6 @@ export default {
              const ampm = startHr >= 12 ? 'PM' : 'AM';
              const displayHour = startHr % 12 || 12;
 
-             // D. Store Combined Data
              if (mapplsData.routes && mapplsData.routes.length > 0) {
                  const durationSeconds = mapplsData.routes[0].duration;
                  results.push({
@@ -126,7 +121,7 @@ export default {
                      distance_km: (mapplsData.routes[0].distance / 1000).toFixed(2),
                      temp_celsius: tempC,
                      rain_probability: rainChance,
-                     note: isFallback ? " (No live traffic data)" : "" // Flag long-distance fallback
+                     note: isFallback ? " (No live traffic data)" : ""
                  });
              } else {
                  results.push({
@@ -135,7 +130,6 @@ export default {
                  });
              }
 
-             // Increment by 30 minutes
              startMin += 30;
              if (startMin >= 60) {
                  startMin = 0;
