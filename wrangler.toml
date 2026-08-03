@@ -1,0 +1,6 @@
+name = "clearway"
+main = "src/worker.js"
+compatibility_date = "2024-08-03"
+
+# ADD THIS LINE: Tells Cloudflare to host these files as your frontend
+assets = { directory = "./public", binding = "ASSETS" }
