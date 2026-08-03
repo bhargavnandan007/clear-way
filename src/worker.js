@@ -25,8 +25,8 @@ export default {
       }
 
       // === MAPPLS OAUTH CREDENTIALS ===
-      const mapplsClientId = "YOUR_CLIENT_ID"; 
-      const mapplsClientSecret = "YOUR_CLIENT_SECRET"; 
+      const mapplsClientId = "96dHZVzsAusy9WUZvw8DmOqLlfd2mazlVJeN_Xn7_DTompZaxCnM_W-qFtdzu-VeLLLTo-pcSJbF47wQCivhvA=="; 
+      const mapplsClientSecret = "lrFxI-iSEg-jDRqME4PigRY7X9N3n8VI4k1SDpfEw6wAxpFhOz28TAPNbKHKYQSFGiOHrZj1B-zNVsGMoLM9SC6M-uqrqvlK"; 
 
       try {
          // --- STEP 1: Fetch Mappls OAuth Token ---
