@@ -59,7 +59,7 @@ document.getElementById('calculate-btn').addEventListener('click', async () => {
                 } else {
                     li.innerHTML = `
                         <strong>${slot.time}</strong> 
-                        <span>⏳ ${slot.duration_minutes} mins (${slot.distance_km} km)</span>
+                        <span>⏳ ${slot.duration_minutes} mins (${slot.distance_km} km) <span style="color: #ffaa00; font-size: 0.8em;">${slot.note || ''}</span></span>
                         <span>🌡️ ${slot.temp_celsius}°C | 🌧️ ${slot.rain_probability}%</span>
                     `;
                 }
